@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Stardew Villager Wordle</title>
+
+<style>
+body{
+    margin:0;
+    font-family:'Segoe UI',sans-serif;
+    background:linear-gradient(180deg,#1e272e,#2f3640);
+    color:white;
+    padding:40px;
+    text-align:center;
+}
+
+h1{
+    font-size:42px;
+    margin-bottom:20px;
+}
+
+.inputContainer{
+    position:relative;
+    display:block;
+    max-width:900px;
+    margin:0 auto;
+}
+
+input{
+    padding:12px;
+    width:100%;
+    border-radius:10px;
+    border:none;
+    font-size:16px;
+}
+
+button{
+    padding:12px 18px;
+    border:none;
+    border-radius:10px;
+    background:#27ae60;
+    color:white;
+    cursor:pointer;
+    margin-top:10px;
+}
+
+button:hover{
+    background:#2ecc71;
+}
+
+/* PREVIEW AUTOCOMPLETE */
+#preview{
+    margin-top:10px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    max-height:500px;
+    overflow-y:auto;
+}
+
+.profileCard{
+    width:100%; /* karta zabírá celou šířku kontejneru */
+    background:#34495e;
+    border-radius:12px;
+    padding:12px;
+    display:flex;
+    gap:12px;
+    box-shadow:0 6px 15px rgba(0,0,0,0.4);
+    cursor:pointer;
+    transition:transform 0.2s, box-shadow 0.2s;
+}
+
+.profileCard:hover{
+    transform:scale(1.02);
+    box-shadow:0 12px 25px rgba(0,0,0,0.6);
+}
+
+.profileImage{
+    width:140px;
+    height:140px;
+    border-radius:8px;
+    background:#2c3e50;
+    background-size:cover;
+    background-position:center;
+    flex-shrink:0;
+}
+
+.profileInfo{
+    text-align:left;
+    font-size:13px;
+    flex-grow:1;
+
+    display:grid;
+    grid-template-columns: 1fr 1fr; /* dva sloupce */
+    gap:6px 12px;
+}
+
+.profileInfo h3{
+    grid-column: span 2; /* jméno přes celou šířku */
+    margin:0 0 4px 0;
+}
+.stat{
+    padding:4px;
+    border-radius:6px;
+    font-weight:bold;
+    margin:0;
+    text-align:center; /* zarovná text doprostřed */
+    background:#1e272e;
+}
+
+.green{ background:#2ecc71; }
+.red{ background:#e74c3c; }
+.orange{ background:#f39c12; }
+
+.giftContainer{
+    margin-top:4px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:4px;
+
+    grid-column: span 2; /* roztáhne přes celou šířku */
+}
+
+.gift{
+    background:#2c3e50;
+    padding:2px 4px;
+    border-radius:6px;
+    display:flex;
+    align-items:center;
+    gap:4px;
+    font-size:11px;
+}
+
+.gift img{
+    width:20px;
+    height:20px;
+}
+
+/* VÝSLEDKY */
+#results{
+    margin-top:20px;
+    display:flex;
+    flex-direction:column; /* každý guess pod sebou */
+    gap:12px;
+}
+
+#results .profileCard{
+    width:100%; /* roztažené na celou šířku */
+}
+</style>
+</head>
+<body>
+
+<h1>🌾 Stardew Wordle 🌾</h1>
+
+<div class="inputContainer">
+    <input id="guessInput" placeholder="Enter villager name" oninput="handleAutocomplete()">
+    <div id="preview"></div>
+</div>
+<button onclick="makeGuess()">Guess</button>
+
+<div id="results"></div>
+
+<script>
+const villagers = [
+    {
+        "name": "Alex",
+        "Birthday": "Summer 13",
+        "lives in": "Pelican Town",
+        "marriage": "Yes",
+        "gender": "",
+        "liked gifts": [
+            "Complete Breakfast",
+            "Jack Be Nimble, Jack Be Thick",
+            "Salmon Dinner"
+        ]
+    },
+    {
+        "name": "Elliott",
+        "Birthday": "Fall 5",
+        "lives in": "The Beach",
+        "marriage": "Yes",
+        "gender": "",
+        "liked gifts": [
+            "Crab Cakes",
+            "Duck Feather",
+            "Lobster",
+            "Pomegranate",
+            "Squid Ink",
+            "Tom Kha Soup"
+        ]
+    },
+    {
+        "name": "Harvey",
+        "Birthday": "Winter 14",
+        "lives in": "Pelican Town",
+        "marriage": "Yes",
+        "gender": "",
+        "liked gifts": [
+            "Coffee",
+            "Jellies and Pickles",
+            "Super Meal",
+            "Truffle Oil",
+            "Wine"
+        ]
+    },
+    {
+        "name": "Sam",
+        "Birthday": "Summer 17",
+        "lives in": "Pelican Town",
+        "marriage": "Yes",
+        "gender": "",
+        "liked gifts": [
+            "Cactus Fruit",
+            "Maple Bar",
+            "Pizza",
+            "Tigerseye"
+        ]
+    },
+    {
+        "name": "Sebastian",
+        "Birthday": "Winter 10",
+        "lives in": "The Mountain",
+        "marriage": "Yes",
+        "gender": "",
+        "liked gifts": [
+            "Frog Egg",
+            "Frozen Tear",
+            "Obsidian",
+            "Pumpkin Soup",
+            "Sashimi",
+            "Void Egg"
+        ]
+    },
+    {
+        "name": "Shane",
+        "Birthday": "Spring 20",
+        "lives in": "Cindersap Forest",
+        "marriage": "Yes",
+        "gender": "",
+        "liked gifts": [
+            "Beer",
+            "Hot Pepper",
+            "Pepper Poppers",
+            "Pizza"
+        ]
+    },
+    {
+        "name": "Abigail",
+        "Birthday": "13 Fall",
+        "lives in": "Pelican Town",
+        "marriage": "Yes",
+        "gender": "",
+        "liked gifts": [
+            "Amethyst",
+            "Banana Pudding",
+            "Blackberry Cobbler",
+            "Chocolate Cake",
+            "Monster Compendium",
+            "Pufferfish",
+            "Pumpkin",
+            "Spicy Eel"
+        ]
+    },
+    {
+        "name": "Emily",
+        "Birthday": "Spring 27",
+        "lives in": "Pelican Town",
+        "marriage": "Yes",
+        "gender": "",
+        "liked gifts": [
+            "Amethyst",
+            "Aquamarine",
+            "Cloth",
+            "Emerald",
+            "Jade",
+            "Parrot Egg",
+            "Ruby",
+            "Survival Burger",
+            "Topaz",
+            "Wool"
+        ]
+    },
+    {
+        "name": "Haley",
+        "Birthday": "Spring 14",
+        "lives in": "Pelican Town",
+        "marriage": "Yes",
+        "gender": "",
+        "liked gifts": [
+            "Coconut",
+            "Fruit Salad",
+            "Pink Cake",
+            "Sunflower"
+        ]
+    },
+    {
+        "name": "Leah",
+        "Birthday": "Winter 23",
+        "lives in": "Cindersap Forest",
+        "marriage": "Yes",
+        "gender": "",
+        "liked gifts": [
+            "Goat Cheese",
+            "Poppyseed Muffin",
+            "Salad",
+            "Stir Fry",
+            "Truffle",
+            "Vegetable Medley",
+            "Wine"
+        ]
+    },
+    {
+        "name": "Maru",
+        "Birthday": "Summer 10",
+        "lives in": "The Mountain",
+        "marriage": "Yes",
+        "gender": "",
+        "liked gifts": [
+            "Battery Pack",
+            "Cauliflower",
+            "Cheese Cauliflower",
+            "Diamond",
+            "Dwarf Gadget",
+            "Gold Bar",
+            "Iridium Bar",
+            "Miner's Treat",
+            "Pepper Poppers",
+            "Radioactive Bar",
+            "Rhubarb Pie",
+            "Strawberry"
+        ]
+    },
+    {
+        "name": "Penny",
+        "Birthday": "Fall 2",
+        "lives in": "Pelican Town",
+        "marriage": "Yes",
+        "gender": "",
+        "liked gifts": [
+            "Books",
+            "Diamond",
+            "Emerald",
+            "Melon",
+            "Poppy",
+            "Poppyseed Muffin",
+            "Red Plate",
+            "Roots Platter",
+            "Sandfish",
+            "Tom Kha Soup"
+        ]
+    },
+    {
+        "name": "Caroline",
+        "Birthday": "Winter 7",
+        "lives in": "Pelican Town",
+        "marriage": "No",
+        "gender": "",
+        "liked gifts": [
+            "Fish Taco",
+            "Green Tea",
+            "Summer Spangle",
+            "Tropical Curry"
+        ]
+    },
+    {
+        "name": "Clint",
+        "Birthday": "Winter 26",
+        "lives in": "Pelican Town",
+        "marriage": "No",
+        "gender": "",
+        "liked gifts": [
+            "Amethyst",
+            "Aquamarine",
+            "Artichoke Dip",
+            "Emerald",
+            "Fiddlehead Risotto",
+            "Gold Bar",
+            "Iridium Bar",
+            "Jade",
+            "Omni Geode",
+            "Ruby",
+            "Topaz"
+        ]
+    },
+    {
+        "name": "Demetrius",
+        "Birthday": "Summer 19",
+        "lives in": "The Mountain",
+        "marriage": "No",
+        "gender": "",
+        "liked gifts": [
+            "Bean Hotpot",
+            "Ice Cream",
+            "Rice Pudding",
+            "Strawberry"
+        ]
+    },
+    {
+        "name": "Dwarf",
+        "Birthday": "Summer 22",
+        "lives in": "The Mines",
+        "marriage": "No",
+        "gender": "",
+        "liked gifts": [
+            "Amethyst",
+            "Aquamarine",
+            "Emerald",
+            "Jade",
+            "Lava Eel",
+            "Lemon Stone",
+            "Omni Geode",
+            "Ruby",
+            "Topaz"
+        ]
+    },
+    {
+        "name": "Evelyn",
+        "Birthday": "Winter 20",
+        "lives in": "Pelican Town",
+        "marriage": "No",
+        "gender": "",
+        "liked gifts": [
+            "Beet",
+            "Chocolate Cake",
+            "Diamond",
+            "Fairy Rose",
+            "Raisins",
+            "Stuffing",
+            "Tulip"
+        ]
+    },
+    {
+        "name": "George",
+        "Birthday": "Fall 24",
+        "lives in": "Pelican Town",
+        "marriage": "No",
+        "gender": "",
+        "liked gifts": [
+            "Fried Mushroom",
+            "Leek"
+        ]
+    },
+    {
+        "name": "Gus",
+        "Birthday": "Summer 8",
+        "lives in": "Pelican Town",
+        "marriage": "No",
+        "gender": "",
+        "liked gifts": [
+            "Diamond",
+            "Escargot",
+            "Fish Taco",
+            "Orange",
+            "Tropical Curry"
+        ]
+    },
+    {
+        "name": "Jas",
+        "Birthday": "Summer 4",
+        "lives in": "Cindersap Forest",
+        "marriage": "No",
+        "gender": "",
+        "liked gifts": [
+            "Ancient Doll",
+            "Fairy Box",
+            "Fairy Rose",
+            "Pink Cake",
+            "Plum Pudding",
+            "Strange Doll (green)",
+            "Strange Doll (yellow)"
+        ]
+    },
+    {
+        "name": "Jodi",
+        "Birthday": "Fall 11",
+        "lives in": "Pelican Town",
+        "marriage": "No",
+        "gender": "",
+        "liked gifts": [
+            "Chocolate Cake",
+            "Crispy Bass",
+            "Diamond",
+            "Eggplant Parmesan",
+            "Fried Eel",
+            "Pancakes",
+            "Rhubarb Pie",
+            "Vegetable Medley"
+        ]
+    },
+    {
+        "name": "Kent",
+        "Birthday": "Spring 4",
+        "lives in": "Pelican Town",
+        "marriage": "No",
+        "gender": "",
+        "liked gifts": [
+            "Fiddlehead Risotto",
+            "Roasted Hazelnuts"
+        ]
+    },
+    {
+        "name": "Krobus",
+        "Birthday": "Winter 1",
+        "lives in": "The Sewers",
+        "marriage": "No",
+        "gender": "",
+        "liked gifts": [
+            "Diamond",
+            "Iridium Bar",
+            "Monster Compendium",
+            "Monster Musk",
+            "Pumpkin",
+            "Void Egg",
+            "Void Mayonnaise",
+            "Wild Horseradish"
+        ]
+    },
+    {
+        "name": "Leo",
+        "Birthday": "Summer 26",
+        "lives in": "Ginger Island",
+        "marriage": "No",
+        "gender": "",
+        "liked gifts": [
+            "Duck Feather",
+            "Mango",
+            "Ostrich Egg",
+            "Parrot Egg",
+            "Poi"
+        ]
+    },
+    {
+        "name": "Lewis",
+        "Birthday": "Spring 7",
+        "lives in": "Pelican Town",
+        "marriage": "No",
+        "gender": "",
+        "liked gifts": [
+            "Autumn's Bounty",
+            "Glazed Yams",
+            "Green Tea",
+            "Hot Pepper",
+            "Vegetable Medley"
+        ]
+    },
+    {
+        "name": "Linus",
+        "Birthday": "Winter 3",
+        "lives in": "The Mountain",
+        "marriage": "No",
+        "gender": "",
+        "liked gifts": [
+            "Blueberry Tart",
+            "Cactus Fruit",
+            "Coconut",
+            "Dish O' The Sea",
+            "The Alleyway Buffet",
+            "Yam"
+        ]
+    },
+    {
+        "name": "Marnie",
+        "Birthday": "Fall 18",
+        "lives in": "Cindersap Forest",
+        "marriage": "No",
+        "gender": "",
+        "liked gifts": [
+            "Diamond",
+            "Farmer's Lunch",
+            "Pink Cake",
+            "Pumpkin Pie"
+        ]
+    },
+    {
+        "name": "Pam",
+        "Birthday": "Spring 18",
+        "lives in": "Pelican Town",
+        "marriage": "No",
+        "gender": "",
+        "liked gifts": [
+            "Beer",
+            "Cactus Fruit",
+            "Glazed Yams",
+            "Mead",
+            "Pale Ale",
+            "Parsnip",
+            "Parsnip Soup",
+            "Piña Colada"
+        ]
+    },
+    {
+        "name": "Pierre",
+        "Birthday": "Spring 26",
+        "lives in": "Pelican Town",
+        "marriage": "No",
+        "gender": "",
+        "liked gifts": [
+            "Fried Calamari",
+            "Price Catalogue"
+        ]
+    },
+    {
+        "name": "Robin",
+        "Birthday": "Fall 21",
+        "lives in": "The Mountain",
+        "marriage": "No",
+        "gender": "",
+        "liked gifts": [
+            "Goat Cheese",
+            "Peach",
+            "Spaghetti",
+            "Woody's Secret"
+        ]
+    },
+    {
+        "name": "Sandy",
+        "Birthday": "Fall 15",
+        "lives in": "The Desert",
+        "marriage": "No",
+        "gender": "",
+        "liked gifts": [
+            "Crocus",
+            "Daffodil",
+            "Mango Sticky Rice",
+            "Sweet Pea"
+        ]
+    },
+    {
+        "name": "Vincent",
+        "Birthday": "Spring 10",
+        "lives in": "Pelican Town",
+        "marriage": "No",
+        "gender": "",
+        "liked gifts": [
+            "Cranberry Candy",
+            "Frog Egg",
+            "Ginger Ale",
+            "Grape",
+            "Pink Cake",
+            "Snail"
+        ]
+    },
+    {
+        "name": "Willy",
+        "Birthday": "Summer 24",
+        "lives in": "The Beach",
+        "marriage": "No",
+        "gender": "",
+        "liked gifts": [
+            "Catfish",
+            "Diamond",
+            "Gold Bar",
+            "Iridium Bar",
+            "Jewels Of The Sea",
+            "Mead",
+            "Octopus",
+            "Pumpkin",
+            "Sea Cucumber",
+            "Sturgeon",
+            "The Art O' Crabbing"
+        ]
+    },
+    {
+        "name": "Wizard",
+        "Birthday": "Winter 17",
+        "lives in": "Cindersap Forest",
+        "marriage": "No",
+        "gender": "",
+        "liked gifts": [
+            "Book of Mysteries",
+            "Purple Mushroom",
+            "Solar Essence",
+            "Super Cucumber",
+            "Void Essence"
+        ]
+    },
+    {
+        "name": "Birdie",
+        "Birthday": "Unknown",
+        "lives in": "Ginger Island",
+        "marriage": "No",
+        "gender": "",
+        "liked gifts": []
+    },
+    {
+        "name": "Bouncer",
+        "Birthday": "Unknown",
+        "lives in": "The Desert",
+        "marriage": "No",
+        "gender": "",
+        "liked gifts": []
+    },
+    {
+        "name": "Fizz",
+        "Birthday": "Unknown",
+        "lives in": "Ginger Island",
+        "marriage": "No",
+        "gender": "",
+        "liked gifts": []
+    },
+    {
+        "name": "Gil",
+        "Birthday": "Unknown",
+        "lives in": "The Mountain",
+        "marriage": "No",
+        "gender": "",
+        "liked gifts": []
+    },
+    {
+        "name": "Governor",
+        "Birthday": "Unknown",
+        "lives in": "",
+        "marriage": "No",
+        "gender": "",
+        "liked gifts": []
+    },
+    {
+        "name": "Grandpa",
+        "Birthday": "Unknown",
+        "lives in": "",
+        "marriage": "No",
+        "gender": "",
+        "liked gifts": []
+    },
+    {
+        "name": "Gunther",
+        "Birthday": "Unknown",
+        "lives in": "Pelican Town",
+        "marriage": "No",
+        "gender": "",
+        "liked gifts": []
+    },
+    {
+        "name": "Henchman",
+        "Birthday": "Unknown",
+        "lives in": "Witch's Swamp",
+        "marriage": "No",
+        "gender": "",
+        "liked gifts": [
+            "Void Mayonnaise"
+        ]
+    },
+    {
+        "name": "Marlon",
+        "Birthday": "Unknown",
+        "lives in": "The Mountain",
+        "marriage": "No",
+        "gender": "",
+        "liked gifts": []
+    },
+    {
+        "name": "Morris",
+        "Birthday": "Unknown",
+        "lives in": "Pelican Town",
+        "marriage": "No",
+        "gender": "",
+        "liked gifts": []
+    },
+    {
+        "name": "Mr. Qi",
+        "Birthday": "Unknown",
+        "lives in": "The Calico Desert",
+        "marriage": "No",
+        "gender": "",
+        "liked gifts": []
+    },
+    {
+        "name": "Professor Snail",
+        "Birthday": "Unknown",
+        "lives in": "Ginger Island",
+        "marriage": "No",
+        "gender": "",
+        "liked gifts": []
+    }
+];
+
+const seasons={Spring:0,Summer:1,Fall:2,Winter:3};
+
+function normalize(s){return s.toLowerCase().trim();}
+
+function parseBirthday(b){
+    if(!b||b==="Unknown") return null;
+    let p=b.split(" ");
+    if(seasons[p[0]]!==undefined) return seasons[p[0]]*28+parseInt(p[1]);
+    if(seasons[p[1]]!==undefined) return seasons[p[1]]*28+parseInt(p[0]);
+    return null;
+}
+
+let target=villagers[Math.floor(Math.random()*villagers.length)];
+console.log("TARGET:",target.name);
+
+function createProfileCard(character){
+    let card=document.createElement("div");
+    card.className="profileCard";
+
+    let imgDiv=document.createElement("div");
+    imgDiv.className="profileImage";
+    imgDiv.style.backgroundImage=`url(https://via.placeholder.com/150)`; // dej reálné fotky
+
+    let info=document.createElement("div");
+    info.className="profileInfo";
+
+    info.innerHTML=`
+        <h3>${character.name}</h3>
+        <div class="stat">🎂 ${character.Birthday}</div>
+        <div class="stat">🏠 ${character["lives in"]||"Unknown"}</div>
+        <div class="stat">💍 ${character.marriage}</div>
+        <div class="stat">❤️ Loved Gifts</div>
+    `;
+
+    let giftContainer=document.createElement("div");
+    giftContainer.className="giftContainer";
+
+    character["liked gifts"].forEach(g=>{
+        let gift=document.createElement("div");
+        gift.className="gift";
+        gift.innerHTML=`<img src="https://via.placeholder.com/20"> ${g}`;
+        giftContainer.appendChild(gift);
+    });
+
+    info.appendChild(giftContainer);
+    card.appendChild(imgDiv);
+    card.appendChild(info);
+
+    card.addEventListener("click",()=>{
+        document.getElementById("guessInput").value=character.name;
+        document.getElementById("preview").innerHTML="";
+    });
+
+    return card;
+}
+
+function handleAutocomplete(){
+    let value=document.getElementById("guessInput").value;
+    let preview=document.getElementById("preview");
+    preview.innerHTML="";
+
+    if(value.length<1) return;
+
+    let matches=villagers.filter(v=>normalize(v.name).startsWith(normalize(value)));
+    if(matches.length===0) return;
+
+    matches.forEach(m=>{
+        preview.appendChild(createProfileCard(m));
+    });
+}
+
+function makeGuess(){
+    let input=document.getElementById("guessInput").value;
+    let guess=villagers.find(v=>normalize(v.name)===normalize(input));
+    if(!guess){alert("Postava nenalezena.");return;}
+
+    let card=createProfileCard(guess);
+    let stats=card.querySelectorAll(".stat");
+
+    let guessDay=parseBirthday(guess.Birthday);
+    let targetDay=parseBirthday(target.Birthday);
+
+    if(guess.Birthday === "Unknown"){
+    stats[0].classList.add("green");
+}
+let guessUnknown = guess.Birthday === "Unknown";
+let targetUnknown = target.Birthday === "Unknown";
+
+if(guessUnknown && targetUnknown){
+    stats[0].classList.add("green");
+}
+else if(guessUnknown || targetUnknown){
+    stats[0].classList.add("red");
+}
+else{
+    if(guessDay === targetDay){
+        stats[0].classList.add("green");
+    }
+    else if(guessDay < targetDay){
+        stats[0].classList.add("red");
+        stats[0].innerHTML += " ↑";
+    }
+    else{
+        stats[0].classList.add("red");
+        stats[0].innerHTML += " ↓";
+    }
+}
+
+    if(guess["lives in"]===target["lives in"]) stats[1].classList.add("green");
+    else stats[1].classList.add("red");
+
+    if(guess.marriage===target.marriage) stats[2].classList.add("green");
+    else stats[2].classList.add("red");
+
+    let overlap=guess["liked gifts"].some(g=>target["liked gifts"].includes(g));
+    if(overlap) stats[3].classList.add("orange");
+    else stats[3].classList.add("red");
+
+    document.getElementById("results").appendChild(card);
+
+    if(normalize(guess.name)===normalize(target.name)){
+        setTimeout(()=>alert("🎉 VYHRÁL JSI!"),200);
+    }
+
+    document.getElementById("guessInput").value="";
+    document.getElementById("preview").innerHTML="";
+}
+</script>
+
+</body>
+</html>
